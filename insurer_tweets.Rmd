@@ -1,0 +1,171 @@
+---
+title: "Tweets relating to SA Insurers"
+runtime: shiny
+date: "`r Sys.Date()`"
+output: 
+  flexdashboard::flex_dashboard:
+    orientation: rows
+    social: [ "twitter", "linkedin"]
+    source_code: embed
+    vertical_layout: fill
+    theme: cosmo
+---
+```{r setup, include=FALSE}
+# Libraries
+library(shiny)
+library("rtweet")
+library("reactable")
+library("glue")
+library("stringr")
+library("httpuv")
+library("dplyr")
+library("purrr")
+```
+
+
+Inputs {.sidebar}
+-------------------------------------
+```{r}
+insurers <- c("Budget Insurance", "Discovery Insure", "Hollard", "MiWay", "Naked Insurance", "Old Mutual iWyze", "Outsurance", "Pineapple", "Santam")
+
+```
+
+### Select Insurer:
+
+```{r}
+radioButtons("insurer","",insurers)
+actionButton("get_data", "Get data", class = "btn-primary")
+
+```
+
+Row{data-width=fill}
+-----------------------------------------------------------------------
+```{r}
+# Configure variables: number of tweets to download and handle query
+num_tweets_to_download <- 200
+pineapple <- "@Pineapple_SA"
+naked <- "@Naked_insurance"
+outsurance <- "@OUTsurance"
+santam <- "@SantamInsurance"
+kingprice <- "@KingPriceIns"
+miway <- "@miwayinsurance"
+iwyze <- "@iwyze"
+hollard <- "@Hollard"
+discovery <- "@Discovery_SA"
+budget <- "@Budgetins"
+
+# Code to actually search for tweets
+pineapple_df <- search_tweets(pineapple, n = num_tweets_to_download, include_rts = TRUE)
+
+naked_df <- search_tweets(naked, n = num_tweets_to_download, include_rts = TRUE)
+
+outsurance_df <- search_tweets(outsurance, n = num_tweets_to_download, include_rts = TRUE)
+
+kingprice_df <- search_tweets(kingprice, n = num_tweets_to_download, include_rts = TRUE)
+
+santam_df <- search_tweets(santam, n = num_tweets_to_download, include_rts = TRUE)
+
+miway_df <- search_tweets(miway, n = num_tweets_to_download, include_rts = TRUE)
+
+iwyze_df <- search_tweets(iwyze, n = num_tweets_to_download, include_rts = TRUE)
+
+hollard_df <- search_tweets(hollard, n = num_tweets_to_download, include_rts = TRUE)
+
+discovery_df <- search_tweets(discovery, n = num_tweets_to_download, include_rts = TRUE)
+
+budget_df <- search_tweets(budget, n = num_tweets_to_download, include_rts = TRUE)
+
+# select a few desired columns and add a clickable link to tweet text for table data
+select_tweets <- function(df){
+  df %>%
+  select(user_id, status_id, created_at, screen_name, text, favorite_count, retweet_count, urls_expanded_url) %>%
+  mutate(
+    Tweet = glue::glue("{text} <a href='https://twitter.com/{screen_name}/status/{status_id}'>>> </a>") 
+  )%>%
+  select(DateTime = created_at, User = screen_name, Tweet, Likes = favorite_count, RTs = retweet_count, URLs = urls_expanded_url)
+}
+
+pineapple_tweets <- select_tweets(pineapple_df)
+naked_tweets <- select_tweets(naked_df)
+outsurance_tweets <- select_tweets(outsurance_df)
+santam_tweets <- select_tweets(santam_df)
+miway_tweets <- select_tweets(miway_df)
+iwyze_tweets <- select_tweets(iwyze_df)
+hollard_tweets <- select_tweets(hollard_df)
+discovery_tweets <- select_tweets(discovery_df)
+budget_tweets <- select_tweets(budget_df)
+
+```
+
+```{r }
+make_url_html <- function(url) {
+  if(length(url) < 2) {
+    if(!is.na(url)) {
+      as.character(glue("<a title = {url} target = '_new' href = '{url}'>{url}</a>") )
+    } else {
+      ""
+    }
+  } else {
+    paste0(purrr::map_chr(url, ~ paste0("<a title = '", .x, "' target = '_new' href = '", .x, "'>", .x, "</a>", collapse = ", ")), collapse = ", ")
+  }
+}
+
+
+pineapple_tweets$URLs <- purrr::map_chr(pineapple_tweets$URLs, make_url_html)
+naked_tweets$URLs <- purrr::map_chr(naked_tweets$URLs, make_url_html)
+outsurance_tweets$URLs <- purrr::map_chr(outsurance_tweets$URLs, make_url_html)
+santam_tweets$URLs <- purrr::map_chr(santam_tweets$URLs, make_url_html)
+miway_tweets$URLs <- purrr::map_chr(miway_tweets$URLs, make_url_html)
+iwyze_tweets$URLs <- purrr::map_chr(iwyze_tweets$URLs, make_url_html)
+hollard_tweets$URLs <- purrr::map_chr(hollard_tweets$URLs, make_url_html)
+discovery_tweets$URLs <- purrr::map_chr(discovery_tweets$URLs, make_url_html)
+budget_tweets$URLs <- purrr::map_chr(budget_tweets$URLs, make_url_html)
+
+```
+
+```{r}
+
+if  insurer= "insurer" == "Budget Insurance"{
+  
+reactable::reactable(budget_tweets, 
+          filterable = TRUE, searchable = TRUE, bordered = TRUE, striped = TRUE, highlight = TRUE,
+          showSortable = TRUE, defaultSortOrder = "desc", defaultPageSize = 25, showPageSizeOptions = TRUE, pageSizeOptions = c(25, 50, 75, 100, 200), 
+          columns = list(
+            DateTime = colDef(defaultSortOrder = "asc"),
+            User = colDef(defaultSortOrder = "asc"),
+            Tweet = colDef(html = TRUE, minWidth = 190, resizable = TRUE),
+            Likes = colDef(filterable = FALSE, format = colFormat(separators = TRUE)),
+            RTs = colDef(filterable =  FALSE, format = colFormat(separators = TRUE)),
+            URLs = colDef(html = TRUE)
+          )
+)
+}
+# display this
+#insurers <- c("Budget Insurance", "Discovery Insure", "Hollard", "MiWay", "Naked Insurance", "Old Mutual iWyze", "Outsurance", "Pineapple", "Santam")
+
+
+
+#pineapple_data <- create_reactable_tables(pineapple_tweets)
+#naked_data <- create_reactable_tables(naked_tweets)
+#outsurance_data <- create_reactable_tables(outsurance_tweets)
+#santam_data <- create_reactable_tables(santam_tweets)
+#miway_data <- create_reactable_tables(miway_tweets)
+#iwyze_data <- create_reactable_tables(iwyze_tweets)
+#hollard_data <- create_reactable_tables(hollard_tweets)
+#discovery_data <- create_reactable_tables(discovery_tweets)
+#budget_data <- create_reactable_tables(budget_tweets)
+
+# Check if this works!
+#class(pineapple_data)
+
+selected <- reactive(display_this %>% 
+                        filter(gender == input$gender, 
+                               age == input$age))
+
+    reactableOutput("display_this")
+    
+    output$display_this <- renderReactable(
+        selected())
+
+```
+
